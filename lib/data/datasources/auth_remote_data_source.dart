@@ -66,6 +66,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         'email': email,
         'name': name.trim(),
         'phone': null,
+        'role': 'user', // Default role for new users
         'addresses': [],
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),

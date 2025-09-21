@@ -5,6 +5,7 @@ import '../bloc/user/user_event.dart';
 import '../bloc/user/user_state.dart';
 import '../bloc/auth/auth_bloc.dart';
 import '../bloc/auth/auth_event.dart';
+import '../services/authorization_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -114,6 +115,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 4),
           Text(user.phone!, style: TextStyle(color: Colors.grey[600])),
         ],
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: user.isAdmin ? Colors.blue[100] : Colors.green[100],
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Text(
+            user.role.displayName,
+            style: TextStyle(
+              color: user.isAdmin ? Colors.blue[800] : Colors.green[800],
+              fontWeight: FontWeight.w500,
+              fontSize: 12,
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -143,8 +160,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           decoration: const InputDecoration(labelText: 'Email'),
           validator: (value) {
             if (value?.isEmpty ?? true) return 'Email is required';
-            if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value!))
+            if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value!)) {
               return 'Invalid email';
+            }
             return null;
           },
         ),
@@ -208,6 +226,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildMenuItems() {
+    final user = (context.read<UserBloc>().state is UserProfileLoaded)
+        ? (context.read<UserBloc>().state as UserProfileLoaded).user
+        : (context.read<UserBloc>().state is UserProfileUpdated)
+        ? (context.read<UserBloc>().state as UserProfileUpdated).user
+        : null;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -275,6 +299,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // Navigate to about screen
             },
           ),
+          // Admin menu items
+          if (user != null &&
+              AuthorizationService.canAccessAdminFeatures(user)) ...[
+            const Divider(),
+            ListTile(
+              leading: const Icon(
+                Icons.admin_panel_settings,
+                color: Colors.blue,
+              ),
+              title: const Text('Admin Dashboard'),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () {
+                // Navigate to admin dashboard
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.inventory, color: Colors.blue),
+              title: const Text('Manage Products'),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () {
+                // Navigate to product management
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.receipt_long, color: Colors.blue),
+              title: const Text('Manage Orders'),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () {
+                // Navigate to order management
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.people, color: Colors.blue),
+              title: const Text('Manage Users'),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () {
+                // Navigate to user management
+              },
+            ),
+          ],
         ],
       ),
     );

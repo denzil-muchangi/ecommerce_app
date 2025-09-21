@@ -18,6 +18,10 @@ abstract class UserRemoteDataSource {
   Future<AddressModel> updateUserAddress(String userId, Address address);
   Future<void> deleteUserAddress(String userId, String addressId);
   Future<void> setDefaultAddress(String userId, String addressId);
+
+  // Admin methods
+  Future<List<UserModel>> getAllUsers();
+  Future<UserModel> updateUserRole(String userId, String role);
 }
 
 class UserRemoteDataSourceImpl implements UserRemoteDataSource {
@@ -186,6 +190,42 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
       await batch.commit();
     } catch (e) {
       throw Exception('Failed to set default address: $e');
+    }
+  }
+
+  @override
+  Future<List<UserModel>> getAllUsers() async {
+    try {
+      final querySnapshot = await _firestore
+          .collection(FirestoreCollections.users)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      return querySnapshot.docs.map((doc) {
+        return UserModel.fromJson({...doc.data(), 'id': doc.id});
+      }).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch all users: $e');
+    }
+  }
+
+  @override
+  Future<UserModel> updateUserRole(String userId, String role) async {
+    try {
+      final updateData = {
+        'role': role,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      await _firestore
+          .collection(FirestoreCollections.users)
+          .doc(userId)
+          .update(updateData);
+
+      // Return updated user
+      return await getUserProfile(userId);
+    } catch (e) {
+      throw Exception('Failed to update user role: $e');
     }
   }
 }

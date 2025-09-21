@@ -75,3 +75,22 @@ class UserError extends UserState {
   @override
   List<Object> get props => [message];
 }
+
+// Admin States
+class AllUsersLoaded extends UserState {
+  final List<User> users;
+
+  const AllUsersLoaded(this.users);
+
+  @override
+  List<Object> get props => [users];
+}
+
+class UserRoleUpdated extends UserState {
+  final User user;
+
+  const UserRoleUpdated(this.user);
+
+  @override
+  List<Object> get props => [user];
+}

@@ -15,6 +15,10 @@ abstract class UserRepository {
   Future<Address> updateUserAddress(String userId, Address address);
   Future<void> deleteUserAddress(String userId, String addressId);
   Future<void> setDefaultAddress(String userId, String addressId);
+
+  // Admin methods
+  Future<List<User>> getAllUsers();
+  Future<User> updateUserRole(String userId, String role);
 }
 
 class UserRepositoryImpl implements UserRepository {
@@ -73,5 +77,17 @@ class UserRepositoryImpl implements UserRepository {
   @override
   Future<void> setDefaultAddress(String userId, String addressId) async {
     await remoteDataSource.setDefaultAddress(userId, addressId);
+  }
+
+  @override
+  Future<List<User>> getAllUsers() async {
+    final userModels = await remoteDataSource.getAllUsers();
+    return userModels;
+  }
+
+  @override
+  Future<User> updateUserRole(String userId, String role) async {
+    final userModel = await remoteDataSource.updateUserRole(userId, role);
+    return userModel;
   }
 }

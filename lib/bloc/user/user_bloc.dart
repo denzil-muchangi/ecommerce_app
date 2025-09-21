@@ -14,6 +14,8 @@ class UserBloc extends Bloc<UserEvent, UserState> {
     on<UpdateUserAddress>(_onUpdateUserAddress);
     on<DeleteUserAddress>(_onDeleteUserAddress);
     on<SetDefaultAddress>(_onSetDefaultAddress);
+    on<LoadAllUsers>(_onLoadAllUsers);
+    on<UpdateUserRole>(_onUpdateUserRole);
   }
 
   Future<void> _onLoadUserProfile(
@@ -115,6 +117,35 @@ class UserBloc extends Bloc<UserEvent, UserState> {
       // Reload addresses to reflect the change
       final addresses = await repository.getUserAddresses(event.userId);
       emit(UserAddressesLoaded(addresses));
+    } catch (e) {
+      emit(UserError(e.toString()));
+    }
+  }
+
+  Future<void> _onLoadAllUsers(
+    LoadAllUsers event,
+    Emitter<UserState> emit,
+  ) async {
+    emit(UserLoading());
+    try {
+      final users = await repository.getAllUsers();
+      emit(AllUsersLoaded(users));
+    } catch (e) {
+      emit(UserError(e.toString()));
+    }
+  }
+
+  Future<void> _onUpdateUserRole(
+    UpdateUserRole event,
+    Emitter<UserState> emit,
+  ) async {
+    emit(UserLoading());
+    try {
+      final user = await repository.updateUserRole(
+        event.userId,
+        event.newRole.name,
+      );
+      emit(UserRoleUpdated(user));
     } catch (e) {
       emit(UserError(e.toString()));
     }

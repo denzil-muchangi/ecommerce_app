@@ -9,6 +9,7 @@ class UserModel extends User {
     required super.email,
     required super.name,
     super.phone,
+    super.role = UserRole.user,
     super.addresses = const [],
   });
 
@@ -18,6 +19,7 @@ class UserModel extends User {
       email: json['email'] as String,
       name: json['name'] as String,
       phone: json['phone'] as String?,
+      role: UserRole.fromString(json['role'] as String? ?? 'user'),
       addresses:
           (json['addresses'] as List<dynamic>?)
               ?.map((addressJson) => AddressModel.fromJson(addressJson))
@@ -32,6 +34,7 @@ class UserModel extends User {
       'email': email,
       'name': name,
       'phone': phone,
+      'role': role.name,
       'addresses': addresses
           .map((address) => AddressModel.fromEntity(address).toJson())
           .toList(),
@@ -44,6 +47,7 @@ class UserModel extends User {
       email: user.email,
       name: user.name,
       phone: user.phone,
+      role: user.role,
       addresses: user.addresses,
     );
   }

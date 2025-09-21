@@ -132,4 +132,25 @@ class MockUserRepository extends _i1.Mock implements _i4.UserRepository {
             returnValueForMissingStub: _i5.Future<void>.value(),
           )
           as _i5.Future<void>);
+
+  @override
+  _i5.Future<List<_i2.User>> getAllUsers() =>
+      (super.noSuchMethod(
+            Invocation.method(#getAllUsers, []),
+            returnValue: _i5.Future<List<_i2.User>>.value(<_i2.User>[]),
+          )
+          as _i5.Future<List<_i2.User>>);
+
+  @override
+  _i5.Future<_i2.User> updateUserRole(String? userId, String? role) =>
+      (super.noSuchMethod(
+            Invocation.method(#updateUserRole, [userId, role]),
+            returnValue: _i5.Future<_i2.User>.value(
+              _FakeUser_0(
+                this,
+                Invocation.method(#updateUserRole, [userId, role]),
+              ),
+            ),
+          )
+          as _i5.Future<_i2.User>);
 }

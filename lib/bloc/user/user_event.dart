@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../domain/entities/address.dart';
+import '../../domain/entities/user.dart';
 
 abstract class UserEvent extends Equatable {
   const UserEvent();
@@ -81,4 +82,17 @@ class SetDefaultAddress extends UserEvent {
 
   @override
   List<Object> get props => [userId, addressId];
+}
+
+// Admin Events
+class LoadAllUsers extends UserEvent {}
+
+class UpdateUserRole extends UserEvent {
+  final String userId;
+  final UserRole newRole;
+
+  const UpdateUserRole({required this.userId, required this.newRole});
+
+  @override
+  List<Object> get props => [userId, newRole];
 }
