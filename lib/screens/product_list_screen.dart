@@ -8,7 +8,9 @@ import '../widgets/product_card.dart';
 import '../domain/entities/category.dart';
 
 class ProductListScreen extends StatefulWidget {
-  const ProductListScreen({super.key});
+  const ProductListScreen({super.key, this.initialCategoryId});
+
+  final String? initialCategoryId;
 
   @override
   State<ProductListScreen> createState() => _ProductListScreenState();
@@ -20,8 +22,15 @@ class _ProductListScreenState extends State<ProductListScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<ProductBloc>().add(LoadProducts());
+    selectedCategoryId = widget.initialCategoryId;
     context.read<ProductBloc>().add(LoadCategories());
+    if (widget.initialCategoryId != null) {
+      context.read<ProductBloc>().add(
+        LoadProductsByCategory(widget.initialCategoryId!),
+      );
+    } else {
+      context.read<ProductBloc>().add(LoadProducts());
+    }
   }
 
   @override
@@ -38,6 +47,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
             builder: (context, state) {
               if (state is CategoriesLoaded) {
                 return PopupMenuButton<String>(
+                  initialValue: selectedCategoryId,
                   onSelected: (categoryId) {
                     setState(() {
                       selectedCategoryId = categoryId;

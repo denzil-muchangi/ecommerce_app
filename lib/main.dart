@@ -23,8 +23,12 @@ import 'data/datasources/cart_local_data_source.dart';
 import 'data/datasources/order_remote_data_source_impl.dart';
 import 'data/datasources/favorites_local_data_source.dart';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   final sharedPreferences = await SharedPreferences.getInstance();
 
   // Initialize notification service

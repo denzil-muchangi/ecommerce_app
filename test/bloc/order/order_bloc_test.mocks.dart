@@ -69,6 +69,8 @@ class MockOrderRepositoryImpl extends _i1.Mock
     required double? tax,
     required double? shipping,
     required double? total,
+    String? paymentReference,
+    String? paymentStatus,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#placeOrder, [], {
@@ -80,6 +82,8 @@ class MockOrderRepositoryImpl extends _i1.Mock
               #tax: tax,
               #shipping: shipping,
               #total: total,
+              #paymentReference: paymentReference,
+              #paymentStatus: paymentStatus,
             }),
             returnValue: _i5.Future<_i3.Order>.value(
               _FakeOrder_1(
@@ -93,6 +97,8 @@ class MockOrderRepositoryImpl extends _i1.Mock
                   #tax: tax,
                   #shipping: shipping,
                   #total: total,
+                  #paymentReference: paymentReference,
+                  #paymentStatus: paymentStatus,
                 }),
               ),
             ),

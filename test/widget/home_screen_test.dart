@@ -8,17 +8,21 @@ import 'package:ecommerce_app/bloc/product/product_bloc.dart';
 import 'package:ecommerce_app/bloc/product/product_state.dart';
 import 'package:ecommerce_app/bloc/product/product_event.dart';
 import 'package:ecommerce_app/data/repositories/product_repository.dart';
+import 'package:ecommerce_app/bloc/favorites/favorites_bloc.dart';
+import 'package:ecommerce_app/data/repositories/favorites_repository_impl.dart';
 import 'package:ecommerce_app/domain/entities/product.dart';
 import 'package:ecommerce_app/domain/entities/category.dart';
 
-@GenerateMocks([ProductRepository])
+@GenerateMocks([ProductRepository, FavoritesRepositoryImpl])
 import 'home_screen_test.mocks.dart';
 
 void main() {
   late MockProductRepository mockProductRepository;
+  late MockFavoritesRepositoryImpl mockFavoritesRepository;
 
   setUp(() {
     mockProductRepository = MockProductRepository();
+    mockFavoritesRepository = MockFavoritesRepositoryImpl();
   });
 
   const testProduct = Product(
@@ -43,8 +47,15 @@ void main() {
 
   Widget createWidgetUnderTest() {
     return MaterialApp(
-      home: BlocProvider<ProductBloc>(
-        create: (_) => ProductBloc(mockProductRepository),
+      home: MultiBlocProvider(
+        providers: [
+          BlocProvider<ProductBloc>(
+            create: (_) => ProductBloc(mockProductRepository),
+          ),
+          BlocProvider<FavoritesBloc>(
+            create: (_) => FavoritesBloc(mockFavoritesRepository),
+          ),
+        ],
         child: const HomeScreen(),
       ),
     );
@@ -87,9 +98,17 @@ void main() {
   testWidgets('HomeScreen shows loading indicator when loading', (
     WidgetTester tester,
   ) async {
+    // Set up mock to return a delayed future to keep it in loading state
+    when(
+      mockProductRepository.getFeaturedProducts(),
+    ).thenAnswer((_) => Future.delayed(const Duration(seconds: 1), () => []));
+    when(
+      mockProductRepository.getCategories(),
+    ).thenAnswer((_) => Future.delayed(const Duration(seconds: 1), () => []));
+
     await tester.pumpWidget(createWidgetUnderTest());
 
-    // Initially should show loading
+    // Should show loading
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
 
@@ -103,8 +122,13 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: BlocProvider<ProductBloc>.value(
-          value: bloc,
+        home: MultiBlocProvider(
+          providers: [
+            BlocProvider<ProductBloc>.value(value: bloc),
+            BlocProvider<FavoritesBloc>(
+              create: (_) => FavoritesBloc(mockFavoritesRepository),
+            ),
+          ],
           child: const HomeScreen(),
         ),
       ),
@@ -124,11 +148,19 @@ void main() {
     when(
       mockProductRepository.getFeaturedProducts(),
     ).thenAnswer((_) async => [testProduct]);
+    when(
+      mockFavoritesRepository.isFavorite('1'),
+    ).thenAnswer((_) async => false);
 
     await tester.pumpWidget(
       MaterialApp(
-        home: BlocProvider<ProductBloc>.value(
-          value: bloc,
+        home: MultiBlocProvider(
+          providers: [
+            BlocProvider<ProductBloc>.value(value: bloc),
+            BlocProvider<FavoritesBloc>(
+              create: (_) => FavoritesBloc(mockFavoritesRepository),
+            ),
+          ],
           child: const HomeScreen(),
         ),
       ),
@@ -136,7 +168,7 @@ void main() {
 
     // Trigger featured products load
     bloc.add(LoadFeaturedProducts());
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Test Product'), findsOneWidget);
   });

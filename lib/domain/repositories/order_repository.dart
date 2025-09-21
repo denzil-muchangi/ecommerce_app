@@ -12,6 +12,8 @@ abstract class OrderRepository {
     required double tax,
     required double shipping,
     required double total,
+    String? paymentReference,
+    String? paymentStatus,
   });
   Future<List<Order>> getOrderHistory(String userId);
   Future<Order> getOrderById(String orderId);

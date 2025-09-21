@@ -16,6 +16,8 @@ class Order {
   final double total;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? paymentReference;
+  final String? paymentStatus;
 
   const Order({
     required this.id,
@@ -30,6 +32,8 @@ class Order {
     required this.total,
     required this.createdAt,
     required this.updatedAt,
+    this.paymentReference,
+    this.paymentStatus,
   });
 
   @override

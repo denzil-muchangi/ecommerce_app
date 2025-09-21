@@ -19,6 +19,8 @@ class OrderRepositoryImpl implements OrderRepository {
     required double tax,
     required double shipping,
     required double total,
+    String? paymentReference,
+    String? paymentStatus,
   }) async {
     final orderModel = await remoteDataSource.placeOrder(
       userId: userId,
@@ -29,6 +31,8 @@ class OrderRepositoryImpl implements OrderRepository {
       tax: tax,
       shipping: shipping,
       total: total,
+      paymentReference: paymentReference,
+      paymentStatus: paymentStatus,
     );
     return orderModel;
   }

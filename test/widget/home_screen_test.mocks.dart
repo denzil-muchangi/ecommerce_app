@@ -3,10 +3,14 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i4;
+import 'dart:async' as _i5;
 
-import 'package:ecommerce_app/data/repositories/product_repository.dart' as _i3;
-import 'package:ecommerce_app/domain/entities/category.dart' as _i5;
+import 'package:ecommerce_app/data/datasources/favorites_local_data_source.dart'
+    as _i3;
+import 'package:ecommerce_app/data/repositories/favorites_repository_impl.dart'
+    as _i7;
+import 'package:ecommerce_app/data/repositories/product_repository.dart' as _i4;
+import 'package:ecommerce_app/domain/entities/category.dart' as _i6;
 import 'package:ecommerce_app/domain/entities/product.dart' as _i2;
 import 'package:mockito/mockito.dart' as _i1;
 
@@ -29,61 +33,156 @@ class _FakeProduct_0 extends _i1.SmartFake implements _i2.Product {
     : super(parent, parentInvocation);
 }
 
+class _FakeFavoritesLocalDataSource_1 extends _i1.SmartFake
+    implements _i3.FavoritesLocalDataSource {
+  _FakeFavoritesLocalDataSource_1(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeProductRepositoryImpl_2 extends _i1.SmartFake
+    implements _i4.ProductRepositoryImpl {
+  _FakeProductRepositoryImpl_2(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
 /// A class which mocks [ProductRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockProductRepository extends _i1.Mock implements _i3.ProductRepository {
+class MockProductRepository extends _i1.Mock implements _i4.ProductRepository {
   MockProductRepository() {
     _i1.throwOnMissingStub(this);
   }
 
   @override
-  _i4.Future<List<_i2.Product>> getProducts() =>
+  _i5.Future<List<_i2.Product>> getProducts() =>
       (super.noSuchMethod(
             Invocation.method(#getProducts, []),
-            returnValue: _i4.Future<List<_i2.Product>>.value(<_i2.Product>[]),
+            returnValue: _i5.Future<List<_i2.Product>>.value(<_i2.Product>[]),
           )
-          as _i4.Future<List<_i2.Product>>);
+          as _i5.Future<List<_i2.Product>>);
 
   @override
-  _i4.Future<List<_i2.Product>> getFeaturedProducts() =>
+  _i5.Future<List<_i2.Product>> getFeaturedProducts() =>
       (super.noSuchMethod(
             Invocation.method(#getFeaturedProducts, []),
-            returnValue: _i4.Future<List<_i2.Product>>.value(<_i2.Product>[]),
+            returnValue: _i5.Future<List<_i2.Product>>.value(<_i2.Product>[]),
           )
-          as _i4.Future<List<_i2.Product>>);
+          as _i5.Future<List<_i2.Product>>);
 
   @override
-  _i4.Future<List<_i2.Product>> getProductsByCategory(String? categoryId) =>
+  _i5.Future<List<_i2.Product>> getProductsByCategory(String? categoryId) =>
       (super.noSuchMethod(
             Invocation.method(#getProductsByCategory, [categoryId]),
-            returnValue: _i4.Future<List<_i2.Product>>.value(<_i2.Product>[]),
+            returnValue: _i5.Future<List<_i2.Product>>.value(<_i2.Product>[]),
           )
-          as _i4.Future<List<_i2.Product>>);
+          as _i5.Future<List<_i2.Product>>);
 
   @override
-  _i4.Future<_i2.Product> getProductById(String? id) =>
+  _i5.Future<_i2.Product> getProductById(String? id) =>
       (super.noSuchMethod(
             Invocation.method(#getProductById, [id]),
-            returnValue: _i4.Future<_i2.Product>.value(
+            returnValue: _i5.Future<_i2.Product>.value(
               _FakeProduct_0(this, Invocation.method(#getProductById, [id])),
             ),
           )
-          as _i4.Future<_i2.Product>);
+          as _i5.Future<_i2.Product>);
 
   @override
-  _i4.Future<List<_i5.Category>> getCategories() =>
+  _i5.Future<List<_i6.Category>> getCategories() =>
       (super.noSuchMethod(
             Invocation.method(#getCategories, []),
-            returnValue: _i4.Future<List<_i5.Category>>.value(<_i5.Category>[]),
+            returnValue: _i5.Future<List<_i6.Category>>.value(<_i6.Category>[]),
           )
-          as _i4.Future<List<_i5.Category>>);
+          as _i5.Future<List<_i6.Category>>);
 
   @override
-  _i4.Future<List<_i2.Product>> searchProducts(String? query) =>
+  _i5.Future<List<_i2.Product>> searchProducts(String? query) =>
       (super.noSuchMethod(
             Invocation.method(#searchProducts, [query]),
-            returnValue: _i4.Future<List<_i2.Product>>.value(<_i2.Product>[]),
+            returnValue: _i5.Future<List<_i2.Product>>.value(<_i2.Product>[]),
           )
-          as _i4.Future<List<_i2.Product>>);
+          as _i5.Future<List<_i2.Product>>);
+}
+
+/// A class which mocks [FavoritesRepositoryImpl].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockFavoritesRepositoryImpl extends _i1.Mock
+    implements _i7.FavoritesRepositoryImpl {
+  MockFavoritesRepositoryImpl() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  _i3.FavoritesLocalDataSource get localDataSource =>
+      (super.noSuchMethod(
+            Invocation.getter(#localDataSource),
+            returnValue: _FakeFavoritesLocalDataSource_1(
+              this,
+              Invocation.getter(#localDataSource),
+            ),
+          )
+          as _i3.FavoritesLocalDataSource);
+
+  @override
+  _i4.ProductRepositoryImpl get productRepository =>
+      (super.noSuchMethod(
+            Invocation.getter(#productRepository),
+            returnValue: _FakeProductRepositoryImpl_2(
+              this,
+              Invocation.getter(#productRepository),
+            ),
+          )
+          as _i4.ProductRepositoryImpl);
+
+  @override
+  _i5.Future<List<String>> getFavoriteProductIds() =>
+      (super.noSuchMethod(
+            Invocation.method(#getFavoriteProductIds, []),
+            returnValue: _i5.Future<List<String>>.value(<String>[]),
+          )
+          as _i5.Future<List<String>>);
+
+  @override
+  _i5.Future<void> addToFavorites(String? productId) =>
+      (super.noSuchMethod(
+            Invocation.method(#addToFavorites, [productId]),
+            returnValue: _i5.Future<void>.value(),
+            returnValueForMissingStub: _i5.Future<void>.value(),
+          )
+          as _i5.Future<void>);
+
+  @override
+  _i5.Future<void> removeFromFavorites(String? productId) =>
+      (super.noSuchMethod(
+            Invocation.method(#removeFromFavorites, [productId]),
+            returnValue: _i5.Future<void>.value(),
+            returnValueForMissingStub: _i5.Future<void>.value(),
+          )
+          as _i5.Future<void>);
+
+  @override
+  _i5.Future<bool> isFavorite(String? productId) =>
+      (super.noSuchMethod(
+            Invocation.method(#isFavorite, [productId]),
+            returnValue: _i5.Future<bool>.value(false),
+          )
+          as _i5.Future<bool>);
+
+  @override
+  _i5.Future<void> toggleFavorite(String? productId) =>
+      (super.noSuchMethod(
+            Invocation.method(#toggleFavorite, [productId]),
+            returnValue: _i5.Future<void>.value(),
+            returnValueForMissingStub: _i5.Future<void>.value(),
+          )
+          as _i5.Future<void>);
+
+  @override
+  _i5.Future<List<_i2.Product>> getFavoriteProducts() =>
+      (super.noSuchMethod(
+            Invocation.method(#getFavoriteProducts, []),
+            returnValue: _i5.Future<List<_i2.Product>>.value(<_i2.Product>[]),
+          )
+          as _i5.Future<List<_i2.Product>>);
 }

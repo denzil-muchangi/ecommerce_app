@@ -12,6 +12,8 @@ abstract class OrderRemoteDataSource {
     required double tax,
     required double shipping,
     required double total,
+    String? paymentReference,
+    String? paymentStatus,
   });
   Future<List<OrderModel>> getOrderHistory(String userId);
   Future<OrderModel> getOrderById(String orderId);

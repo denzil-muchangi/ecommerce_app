@@ -25,6 +25,8 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         tax: event.tax,
         shipping: event.shipping,
         total: event.total,
+        paymentReference: event.paymentReference,
+        paymentStatus: event.paymentStatus,
       );
       emit(OrderPlaced(order));
 

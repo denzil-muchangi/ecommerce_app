@@ -110,7 +110,9 @@ GoRouter createRouter(AuthBloc authBloc) {
             routes: [
               GoRoute(
                 path: '/categories',
-                builder: (context, state) => const ProductListScreen(),
+                builder: (context, state) => ProductListScreen(
+                  initialCategoryId: state.extra as String?,
+                ),
               ),
             ],
           ),

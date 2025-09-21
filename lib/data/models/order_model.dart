@@ -19,6 +19,8 @@ class OrderModel extends Order {
     required super.total,
     required super.createdAt,
     required super.updatedAt,
+    super.paymentReference,
+    super.paymentStatus,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -39,6 +41,8 @@ class OrderModel extends Order {
       total: (json['total'] as num).toDouble(),
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
+      paymentReference: json['paymentReference'] as String?,
+      paymentStatus: json['paymentStatus'] as String?,
     );
   }
 
@@ -58,6 +62,8 @@ class OrderModel extends Order {
       'total': total,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'paymentReference': paymentReference,
+      'paymentStatus': paymentStatus,
     };
   }
 
@@ -75,6 +81,8 @@ class OrderModel extends Order {
       total: order.total,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
+      paymentReference: order.paymentReference,
+      paymentStatus: order.paymentStatus,
     );
   }
 }

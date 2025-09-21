@@ -1,59 +1,108 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
+import '../firestore_collections.dart';
 
 abstract class AuthRemoteDataSource {
   Future<UserModel> login(String email, String password);
   Future<UserModel> register(String email, String password, String name);
+  Future<void> logout();
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
-  // Mock authentication - accepts any valid email/password combination
+  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   @override
   Future<UserModel> login(String email, String password) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-    // Basic email validation
-    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
-      throw Exception('Invalid email format');
+      // Get user data from Firestore
+      final userDoc = await _firestore
+          .collection(FirestoreCollections.users)
+          .doc(userCredential.user!.uid)
+          .get();
+
+      if (!userDoc.exists) {
+        throw Exception('User data not found');
+      }
+
+      return UserModel.fromJson({
+        ...userDoc.data()!,
+        'id': userCredential.user!.uid,
+      });
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'user-not-found':
+          throw Exception('No user found with this email');
+        case 'wrong-password':
+          throw Exception('Wrong password provided');
+        case 'invalid-email':
+          throw Exception('Invalid email format');
+        case 'user-disabled':
+          throw Exception('User account has been disabled');
+        default:
+          throw Exception('Login failed: ${e.message}');
+      }
+    } catch (e) {
+      throw Exception('Login failed: $e');
     }
-
-    if (password.isEmpty) {
-      throw Exception('Password cannot be empty');
-    }
-
-    // For demo purposes, accept any valid email/password
-    // In real app, this would validate against server
-    return UserModel(
-      id: 'user_${email.hashCode}',
-      email: email,
-      name: 'User ${email.split('@').first}',
-    );
   }
 
   @override
   Future<UserModel> register(String email, String password, String name) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-    // Basic validation
-    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
-      throw Exception('Invalid email format');
+      // Create user document in Firestore
+      final userData = {
+        'email': email,
+        'name': name.trim(),
+        'phone': null,
+        'addresses': [],
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      await _firestore
+          .collection(FirestoreCollections.users)
+          .doc(userCredential.user!.uid)
+          .set(userData);
+
+      return UserModel(
+        id: userCredential.user!.uid,
+        email: email,
+        name: name.trim(),
+      );
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'weak-password':
+          throw Exception('Password is too weak');
+        case 'email-already-in-use':
+          throw Exception('An account already exists with this email');
+        case 'invalid-email':
+          throw Exception('Invalid email format');
+        default:
+          throw Exception('Registration failed: ${e.message}');
+      }
+    } catch (e) {
+      throw Exception('Registration failed: $e');
     }
+  }
 
-    if (password.length < 6) {
-      throw Exception('Password must be at least 6 characters');
+  @override
+  Future<void> logout() async {
+    try {
+      await _firebaseAuth.signOut();
+    } catch (e) {
+      throw Exception('Logout failed: $e');
     }
-
-    if (name.trim().isEmpty) {
-      throw Exception('Name cannot be empty');
-    }
-
-    // For demo purposes, accept any valid input
-    // In real app, this would create user on server
-    return UserModel(
-      id: 'user_${email.hashCode}',
-      email: email,
-      name: name.trim(),
-    );
   }
 }

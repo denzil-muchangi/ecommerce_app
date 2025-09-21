@@ -1,14 +1,14 @@
-import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'order_remote_data_source.dart';
 import '../models/order_model.dart';
 import '../../domain/entities/cart_item.dart';
 import '../../domain/entities/address.dart';
 import '../models/cart_item_model.dart';
 import '../models/address_model.dart';
+import '../firestore_collections.dart';
 
 class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
-  // Mock storage for orders
-  final List<Map<String, dynamic>> _mockOrders = [];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   Future<OrderModel> placeOrder({
@@ -20,64 +20,77 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
     required double tax,
     required double shipping,
     required double total,
+    String? paymentReference,
+    String? paymentStatus,
   }) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 1000));
+    try {
+      final orderId = 'ORD${DateTime.now().millisecondsSinceEpoch}';
+      final now = DateTime.now();
 
-    final orderId = 'ORD${DateTime.now().millisecondsSinceEpoch}';
-    final now = DateTime.now();
+      final orderData = {
+        'userId': userId,
+        'items': items
+            .map((item) => CartItemModel.fromEntity(item).toJson())
+            .toList(),
+        'shippingAddress': AddressModel.fromEntity(shippingAddress).toJson(),
+        'paymentMethod': paymentMethod,
+        'status': 'pending',
+        'subtotal': subtotal,
+        'tax': tax,
+        'shipping': shipping,
+        'total': total,
+        'createdAt': now.toIso8601String(),
+        'updatedAt': now.toIso8601String(),
+        'paymentReference': paymentReference,
+        'paymentStatus': paymentStatus,
+      };
 
-    final orderJson = {
-      'id': orderId,
-      'userId': userId,
-      'items': items
-          .map((item) => CartItemModel.fromEntity(item).toJson())
-          .toList(),
-      'shippingAddress': AddressModel.fromEntity(shippingAddress).toJson(),
-      'paymentMethod': paymentMethod,
-      'status': 'pending',
-      'subtotal': subtotal,
-      'tax': tax,
-      'shipping': shipping,
-      'total': total,
-      'createdAt': now.toIso8601String(),
-      'updatedAt': now.toIso8601String(),
-    };
+      await _firestore
+          .collection(FirestoreCollections.orders)
+          .doc(orderId)
+          .set(orderData);
 
-    _mockOrders.add(orderJson);
-
-    return OrderModel.fromJson(orderJson);
+      return OrderModel.fromJson({...orderData, 'id': orderId});
+    } catch (e) {
+      throw Exception('Failed to place order: $e');
+    }
   }
 
   @override
   Future<List<OrderModel>> getOrderHistory(String userId) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      final querySnapshot = await _firestore
+          .collection(FirestoreCollections.orders)
+          .where('userId', isEqualTo: userId)
+          .orderBy('createdAt', descending: true)
+          .get();
 
-    final userOrders = _mockOrders
-        .where((order) => order['userId'] == userId)
-        .toList();
-
-    // Sort by created date (newest first)
-    userOrders.sort(
-      (a, b) => DateTime.parse(
-        b['createdAt'],
-      ).compareTo(DateTime.parse(a['createdAt'])),
-    );
-
-    return userOrders.map((json) => OrderModel.fromJson(json)).toList();
+      return querySnapshot.docs.map((doc) {
+        return OrderModel.fromJson({...doc.data(), 'id': doc.id});
+      }).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch order history: $e');
+    }
   }
 
   @override
   Future<OrderModel> getOrderById(String orderId) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 300));
+    try {
+      final docSnapshot = await _firestore
+          .collection(FirestoreCollections.orders)
+          .doc(orderId)
+          .get();
 
-    final orderJson = _mockOrders.firstWhere(
-      (order) => order['id'] == orderId,
-      orElse: () => throw Exception('Order not found'),
-    );
+      if (!docSnapshot.exists) {
+        throw Exception('Order not found');
+      }
 
-    return OrderModel.fromJson(orderJson);
+      return OrderModel.fromJson({
+        ...docSnapshot.data()!,
+        'id': docSnapshot.id,
+      });
+    } catch (e) {
+      throw Exception('Failed to fetch order: $e');
+    }
   }
 }

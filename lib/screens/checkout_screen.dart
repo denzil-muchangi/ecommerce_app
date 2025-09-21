@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_paystack/flutter_paystack.dart';
 import '../bloc/cart/cart_bloc.dart';
 import '../bloc/cart/cart_event.dart';
 import '../bloc/cart/cart_state.dart';
@@ -24,6 +25,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Address? _selectedAddress;
   String _paymentMethod = 'Credit Card';
   bool _isPlacingOrder = false;
+  final plugin = PaystackPlugin();
 
   @override
   Widget build(BuildContext context) {
@@ -300,6 +302,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 },
               ),
               RadioListTile<String>(
+                title: const Text('Paystack'),
+                value: 'Paystack',
+                groupValue: _paymentMethod,
+                onChanged: (value) {
+                  setState(() => _paymentMethod = value!);
+                },
+              ),
+              RadioListTile<String>(
                 title: const Text('PayPal'),
                 value: 'PayPal',
                 groupValue: _paymentMethod,
@@ -350,7 +360,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     BuildContext context,
     List<CartItem> items,
     Map<String, double> calculations,
-  ) {
+  ) async {
     if (_selectedAddress == null) return;
 
     setState(() => _isPlacingOrder = true);
@@ -359,23 +369,80 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     // For now, using a mock user ID
     const userId = 'user1';
 
-    context.read<OrderBloc>().add(
-      PlaceOrder(
-        userId: userId,
-        items: items,
-        shippingAddress: _selectedAddress!,
-        paymentMethod: _paymentMethod,
-        subtotal: calculations['subtotal']!,
-        tax: calculations['tax']!,
-        shipping: calculations['shipping']!,
-        total: calculations['total']!,
-      ),
-    );
+    if (_paymentMethod == 'Paystack') {
+      await _handlePaystackPayment(context, items, calculations, userId);
+    } else {
+      context.read<OrderBloc>().add(
+        PlaceOrder(
+          userId: userId,
+          items: items,
+          shippingAddress: _selectedAddress!,
+          paymentMethod: _paymentMethod,
+          subtotal: calculations['subtotal']!,
+          tax: calculations['tax']!,
+          shipping: calculations['shipping']!,
+          total: calculations['total']!,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handlePaystackPayment(
+    BuildContext context,
+    List<CartItem> items,
+    Map<String, double> calculations,
+    String userId,
+  ) async {
+    try {
+      final charge = Charge()
+        ..amount = (calculations['total']! * 100)
+            .toInt() // Paystack expects amount in kobo
+        ..email =
+            'user@example.com' // Should get from user data
+        ..reference = 'ref_${DateTime.now().millisecondsSinceEpoch}';
+
+      final response = await plugin.checkout(
+        context,
+        method: CheckoutMethod.card,
+        charge: charge,
+      );
+
+      if (response.status) {
+        // Payment successful, place order
+        context.read<OrderBloc>().add(
+          PlaceOrder(
+            userId: userId,
+            items: items,
+            shippingAddress: _selectedAddress!,
+            paymentMethod: _paymentMethod,
+            subtotal: calculations['subtotal']!,
+            tax: calculations['tax']!,
+            shipping: calculations['shipping']!,
+            total: calculations['total']!,
+            paymentReference: response.reference,
+            paymentStatus: 'success',
+          ),
+        );
+      } else {
+        // Payment failed
+        setState(() => _isPlacingOrder = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Payment failed: ${response.message}')),
+        );
+      }
+    } catch (e) {
+      setState(() => _isPlacingOrder = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Payment error: $e')));
+    }
   }
 
   @override
   void initState() {
     super.initState();
+    // Initialize Paystack
+    plugin.initialize(publicKey: 'pk_test_your_paystack_public_key_here');
     // Load user addresses
     context.read<UserBloc>().add(const LoadUserAddresses('user1'));
   }

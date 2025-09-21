@@ -18,6 +18,8 @@ class PlaceOrder extends OrderEvent {
   final double tax;
   final double shipping;
   final double total;
+  final String? paymentReference;
+  final String? paymentStatus;
 
   const PlaceOrder({
     required this.userId,
@@ -28,6 +30,8 @@ class PlaceOrder extends OrderEvent {
     required this.tax,
     required this.shipping,
     required this.total,
+    this.paymentReference,
+    this.paymentStatus,
   });
 
   @override
@@ -40,6 +44,8 @@ class PlaceOrder extends OrderEvent {
     tax,
     shipping,
     total,
+    if (paymentReference != null) paymentReference!,
+    if (paymentStatus != null) paymentStatus!,
   ];
 }
 

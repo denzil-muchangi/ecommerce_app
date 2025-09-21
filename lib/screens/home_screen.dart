@@ -143,9 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             return GestureDetector(
                               onTap: () {
                                 // Navigate to product list with category
-                                context.read<ProductBloc>().add(
-                                  LoadProductsByCategory(category.id),
-                                );
+                                context.go('/categories', extra: category.id);
                               },
                               child: Container(
                                 width: 80,
