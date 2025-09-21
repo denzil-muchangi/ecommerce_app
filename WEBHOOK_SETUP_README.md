@@ -16,8 +16,9 @@ Webhooks are automated messages sent from Paystack to your server when specific 
 ## Prerequisites
 
 - A Paystack account with API keys configured
-- A backend server or cloud function to receive webhook events
-- HTTPS endpoint (Paystack requires secure connections for webhooks)
+- Firebase project set up (see FIREBASE_README.md)
+- Firebase CLI installed (`npm install -g firebase-tools`)
+- Node.js installed for Cloud Functions development
 
 ## Step 1: Access Webhook Settings
 
@@ -32,12 +33,14 @@ Webhooks are automated messages sent from Paystack to your server when specific 
 3. Fill in the webhook details:
 
 ### Webhook URL
-Enter your server's endpoint URL that will receive webhook events. This should be:
+Enter your Firebase Cloud Function URL that will receive webhook events. After deploying your function, Firebase will provide you with a URL like:
+
+`https://us-central1-your-project-id.cloudfunctions.net/paystackWebhook`
+
+This URL will be:
 - A publicly accessible HTTPS URL
 - Capable of handling POST requests
 - Configured to process JSON payloads
-
-Example: `https://yourdomain.com/api/paystack/webhook`
 
 ### Events to Listen For
 Select the events you want to receive notifications for:
@@ -60,187 +63,200 @@ Select the events you want to receive notifications for:
 2. Paystack will send a test event to verify your endpoint
 3. Your server should respond with a `200 OK` status to confirm receipt
 
-## Step 4: Implement Webhook Handler on Your Server
+## Step 4: Set Up Firebase Cloud Functions
 
-### Backend Implementation
+Since you're using Firebase, you'll handle webhooks using Firebase Cloud Functions. This provides a serverless backend that integrates seamlessly with your Firestore database.
 
-Create an endpoint on your server to handle webhook events. Here's an example using Node.js/Express:
+### Initialize Cloud Functions
 
-```javascript
-const express = require('express');
-const crypto = require('crypto');
-const app = express();
+1. Install Firebase CLI if you haven't already:
+   ```bash
+   npm install -g firebase-tools
+   ```
 
-app.use(express.json());
+2. Initialize Cloud Functions in your project:
+   ```bash
+   firebase init functions
+   ```
 
-// Paystack webhook secret (set this in your environment variables)
-const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET;
+3. Choose your Firebase project and select TypeScript for the functions.
 
-app.post('/api/paystack/webhook', (req, res) => {
+### Create the Webhook Function
+
+Create a new function file `functions/src/paystack-webhook.ts`:
+
+```typescript
+import * as functions from 'firebase-functions';
+import * as admin from 'firebase-admin';
+import * as crypto from 'crypto';
+
+admin.initializeApp();
+
+const PAYSTACK_SECRET = functions.config().paystack.secret;
+
+export const paystackWebhook = functions.https.onRequest(async (req, res) => {
+  // Only allow POST requests
+  if (req.method !== 'POST') {
+    res.status(405).send('Method Not Allowed');
+    return;
+  }
+
   // Verify webhook signature
+  const signature = req.headers['x-paystack-signature'] as string;
   const hash = crypto
     .createHmac('sha512', PAYSTACK_SECRET)
     .update(JSON.stringify(req.body))
     .digest('hex');
 
-  if (hash !== req.headers['x-paystack-signature']) {
-    return res.status(400).send('Invalid signature');
+  if (hash !== signature) {
+    console.error('Invalid webhook signature');
+    res.status(400).send('Invalid signature');
+    return;
   }
 
   const event = req.body;
+  console.log('Received webhook event:', event.event);
 
-  // Handle different event types
-  switch (event.event) {
-    case 'charge.success':
-      handleSuccessfulPayment(event.data);
-      break;
-    case 'charge.failed':
-      handleFailedPayment(event.data);
-      break;
-    case 'transfer.success':
-      handleSuccessfulTransfer(event.data);
-      break;
-    default:
-      console.log('Unhandled event type:', event.event);
+  try {
+    // Handle different event types
+    switch (event.event) {
+      case 'charge.success':
+        await handleSuccessfulPayment(event.data);
+        break;
+      case 'charge.failed':
+        await handleFailedPayment(event.data);
+        break;
+      case 'transfer.success':
+        await handleSuccessfulTransfer(event.data);
+        break;
+      case 'transfer.failed':
+        await handleFailedTransfer(event.data);
+        break;
+      default:
+        console.log('Unhandled event type:', event.event);
+    }
+
+    res.status(200).send('Webhook received successfully');
+  } catch (error) {
+    console.error('Error processing webhook:', error);
+    res.status(500).send('Internal server error');
   }
-
-  res.status(200).send('Webhook received');
 });
 
-function handleSuccessfulPayment(data) {
+async function handleSuccessfulPayment(data: any) {
   const { reference, amount, customer, metadata } = data;
+  const orderId = metadata?.order_id;
 
-  // Update order status in your database
-  // Send confirmation email
-  // Trigger fulfillment process
-  console.log(`Payment successful: ${reference}, Amount: ${amount}`);
-}
+  console.log(`Processing successful payment: ${reference}, Amount: ${amount}`);
 
-function handleFailedPayment(data) {
-  const { reference, customer } = data;
+  if (orderId) {
+    // Update order status in Firestore
+    const orderRef = admin.firestore().collection('orders').doc(orderId);
 
-  // Update order status to failed
-  // Notify customer of failure
-  // Log failure for analysis
-  console.log(`Payment failed: ${reference}`);
-}
+    await orderRef.update({
+      status: 'paid',
+      paymentStatus: 'completed',
+      paymentReference: reference,
+      paidAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
 
-function handleSuccessfulTransfer(data) {
-  const { reference, amount } = data;
+    // Update product stock if needed
+    const orderDoc = await orderRef.get();
+    const orderData = orderDoc.data();
 
-  // Update payout status
-  // Send notification to merchant
-  console.log(`Transfer successful: ${reference}, Amount: ${amount}`);
-}
-
-app.listen(3000, () => {
-  console.log('Webhook server running on port 3000');
-});
-```
-
-### Python/Django Example
-
-```python
-import json
-import hmac
-import hashlib
-from django.http import HttpResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
-
-@csrf_exempt
-def paystack_webhook(request):
-    if request.method != 'POST':
-        return HttpResponse(status=405)
-
-    # Verify webhook signature
-    paystack_secret = settings.PAYSTACK_SECRET.encode('utf-8')
-    signature = request.META.get('HTTP_X_PAYSTACK_SIGNATURE')
-    computed_hash = hmac.new(paystack_secret, request.body, hashlib.sha512).hexdigest()
-
-    if not hmac.compare_digest(computed_hash, signature):
-        return HttpResponse('Invalid signature', status=400)
-
-    try:
-        event = json.loads(request.body)
-    except json.JSONDecodeError:
-        return HttpResponse('Invalid JSON', status=400)
-
-    # Handle events
-    if event['event'] == 'charge.success':
-        handle_successful_payment(event['data'])
-    elif event['event'] == 'charge.failed':
-        handle_failed_payment(event['data'])
-
-    return HttpResponse('Webhook received', status=200)
-
-def handle_successful_payment(data):
-    reference = data['reference']
-    amount = data['amount']
-    customer = data['customer']
-
-    # Update your database
-    # Send notifications
-    print(f"Payment successful: {reference}")
-```
-
-### PHP/Laravel Example
-
-```php
-<?php
-
-namespace App\Http\Controllers;
-
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-
-class PaystackWebhookController extends Controller
-{
-    public function handleWebhook(Request $request)
-    {
-        // Verify signature
-        $paystackSecret = env('PAYSTACK_SECRET');
-        $signature = $request->header('X-Paystack-Signature');
-        $computedHash = hash_hmac('sha512', $request->getContent(), $paystackSecret);
-
-        if (!hash_equals($computedHash, $signature)) {
-            return response('Invalid signature', 400);
-        }
-
-        $event = json_decode($request->getContent(), true);
-
-        // Handle events
-        switch ($event['event']) {
-            case 'charge.success':
-                $this->handleSuccessfulPayment($event['data']);
-                break;
-            case 'charge.failed':
-                $this->handleFailedPayment($event['data']);
-                break;
-        }
-
-        return response('Webhook received', 200);
+    if (orderData?.items) {
+      for (const item of orderData.items) {
+        const productRef = admin.firestore().collection('products').doc(item.productId);
+        await admin.firestore().runTransaction(async (transaction) => {
+          const productDoc = await transaction.get(productRef);
+          if (productDoc.exists) {
+            const currentStock = productDoc.data()?.stock || 0;
+            transaction.update(productRef, {
+              stock: Math.max(0, currentStock - item.quantity),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+          }
+        });
+      }
     }
 
-    private function handleSuccessfulPayment($data)
-    {
-        $reference = $data['reference'];
-        $amount = $data['amount'];
-
-        // Update database
-        // Send notifications
-        Log::info("Payment successful: {$reference}");
+    // Send push notification to user (if using FCM)
+    if (customer?.email) {
+      // You can integrate with Firebase Cloud Messaging here
+      console.log(`Payment confirmed for order ${orderId}`);
     }
+  }
+}
 
-    private function handleFailedPayment($data)
-    {
-        $reference = $data['reference'];
+async function handleFailedPayment(data: any) {
+  const { reference, customer, metadata } = data;
+  const orderId = metadata?.order_id;
 
-        // Update order status
-        Log::error("Payment failed: {$reference}");
-    }
+  console.log(`Processing failed payment: ${reference}`);
+
+  if (orderId) {
+    // Update order status to failed
+    await admin.firestore().collection('orders').doc(orderId).update({
+      status: 'payment_failed',
+      paymentStatus: 'failed',
+      paymentReference: reference,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+  }
+}
+
+async function handleSuccessfulTransfer(data: any) {
+  const { reference, amount, recipient } = data;
+
+  console.log(`Processing successful transfer: ${reference}, Amount: ${amount}`);
+
+  // Update transfer/payout status
+  // You might want to track payouts in a separate collection
+  await admin.firestore().collection('transfers').doc(reference).update({
+    status: 'completed',
+    completedAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+async function handleFailedTransfer(data: any) {
+  const { reference, recipient } = data;
+
+  console.log(`Processing failed transfer: ${reference}`);
+
+  // Update transfer status and handle failure
+  await admin.firestore().collection('transfers').doc(reference).update({
+    status: 'failed',
+    failedAt: admin.firestore.FieldValue.serverTimestamp()
+  });
 }
 ```
+
+### Update Functions Index
+
+In `functions/src/index.ts`, export your webhook function:
+
+```typescript
+export { paystackWebhook } from './paystack-webhook';
+```
+
+### Configure Environment Variables
+
+Set your Paystack secret key:
+
+```bash
+firebase functions:config:set paystack.secret="your_paystack_secret_key_here"
+```
+
+### Deploy the Function
+
+Deploy your Cloud Function:
+
+```bash
+firebase deploy --only functions:paystackWebhook
+```
+
+After deployment, Firebase will provide you with the function URL, which you'll use as your webhook URL in Paystack.
 
 ## Step 5: Webhook Security
 
@@ -265,25 +281,111 @@ Paystack sends webhooks from specific IP addresses. You can whitelist these IPs 
 3. Check your server logs to confirm webhook receipt
 4. Verify that your application correctly processes the events
 
-## Step 7: Handle Webhook Events in Your Flutter App
+## Step 7: Listen to Firestore Changes in Your Flutter App
 
-While webhooks are primarily server-side, you can update your Flutter app based on webhook notifications:
+Since webhooks update your Firestore database, your Flutter app can listen to these changes in real-time.
+
+**Note:** For the webhook to properly identify which order to update, you can either:
+- Include order metadata in the Paystack charge (if supported by the package)
+- Use the payment reference to match payments to orders
+- Store a mapping of payment references to order IDs
+
+In the Cloud Function, you can query orders by payment reference or use metadata if available.
+
+### Listen to Order Status Changes
 
 ```dart
-// In your order service or BLoC
-void updateOrderStatus(String orderId, String status) {
-  // Update local database
-  // Refresh UI
-  // Send push notifications
+// In your OrderBloc or OrderRepository
+Stream<Order> listenToOrderStatus(String orderId) {
+  return FirebaseFirestore.instance
+      .collection('orders')
+      .doc(orderId)
+      .snapshots()
+      .map((doc) => Order.fromFirestore(doc));
 }
 
-// Call this when webhook confirms payment
-void handlePaymentConfirmation(Map<String, dynamic> webhookData) {
-  final orderId = webhookData['metadata']['order_id'];
-  final status = webhookData['status'];
+// In your OrderBloc
+class OrderBloc extends Bloc<OrderEvent, OrderState> {
+  final FirebaseFirestore _firestore;
 
-  updateOrderStatus(orderId, status);
+  OrderBloc(this._firestore) : super(OrderInitial()) {
+    on<ListenToOrderStatus>((event, emit) async {
+      await emit.forEach<Order>(
+        listenToOrderStatus(event.orderId),
+        onData: (order) {
+          if (order.status == 'paid') {
+            // Payment confirmed, navigate to success screen
+            return OrderPaymentConfirmed(order);
+          } else if (order.status == 'payment_failed') {
+            // Payment failed, show error
+            return OrderPaymentFailed(order);
+          }
+          return OrderLoaded(order);
+        },
+        onError: (error, stackTrace) => OrderError(error.toString()),
+      );
+    });
+  }
 }
+```
+
+### Real-time UI Updates
+
+```dart
+// In your order confirmation screen
+class OrderConfirmationScreen extends StatelessWidget {
+  final String orderId;
+
+  const OrderConfirmationScreen({Key? key, required this.orderId}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => OrderBloc(context.read())
+        ..add(ListenToOrderStatus(orderId)),
+      child: BlocBuilder<OrderBloc, OrderState>(
+        builder: (context, state) {
+          if (state is OrderPaymentConfirmed) {
+            return PaymentSuccessWidget(order: state.order);
+          } else if (state is OrderPaymentFailed) {
+            return PaymentFailedWidget(order: state.order);
+          } else if (state is OrderLoaded) {
+            return OrderDetailsWidget(order: state.order);
+          }
+          return const CircularProgressIndicator();
+        },
+      ),
+    );
+  }
+}
+```
+
+### Push Notifications (Optional)
+
+For better user experience, integrate Firebase Cloud Messaging to notify users of payment status changes:
+
+```dart
+// Handle background messages
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  if (message.data['type'] == 'payment_confirmed') {
+    // Handle payment confirmation notification
+    final orderId = message.data['order_id'];
+    // Update local state or navigate to confirmation screen
+  }
+}
+
+// In your main.dart
+FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+// Listen for foreground messages
+FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+  if (message.data['type'] == 'payment_confirmed') {
+    // Show in-app notification
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Payment confirmed for order ${message.data['order_id']}')),
+    );
+  }
+});
 ```
 
 ## Common Webhook Events
