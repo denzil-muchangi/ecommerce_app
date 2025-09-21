@@ -1,24 +1,24 @@
-# Paystack Webhook Setup Guide
+# 🔗 Paystack Webhook Setup Guide (Firebase/Flutter)
 
-This guide provides detailed instructions for setting up webhooks in Paystack to handle payment events for your E-Commerce Flutter app.
+This guide shows you how to set up Paystack webhooks using Firebase Cloud Functions. Webhooks automatically notify your app when payments complete!
 
-## What are Webhooks?
+## 🤔 What are Webhooks?
 
-Webhooks are automated messages sent from Paystack to your server when specific events occur. Unlike polling (where your app repeatedly checks for updates), webhooks push real-time notifications to your server, making them more efficient and reliable for handling payment events.
+Webhooks are like text messages from Paystack to your server. When a payment succeeds or fails, Paystack instantly sends your server a notification. No need to constantly check for updates!
 
-## Why Use Webhooks?
+## ✅ Why Use Webhooks?
 
-- **Real-time Updates**: Get instant notifications when payments succeed, fail, or are refunded
-- **Reliability**: Don't miss important payment events due to app crashes or network issues
-- **Security**: Server-side verification of payment status
-- **Automation**: Automatically update order status, send receipts, or trigger fulfillment processes
+- **Instant Updates**: Know immediately when payments complete
+- **Never Miss Payments**: Server-side confirmation even if app crashes
+- **Secure**: Verify payments on your server
+- **Automate**: Auto-update orders, send emails, trigger shipping
 
-## Prerequisites
+## 📋 What You'll Need
 
-- A Paystack account with API keys configured
-- Firebase project set up (see FIREBASE_README.md)
-- Firebase CLI installed (`npm install -g firebase-tools`)
-- Node.js installed for Cloud Functions development
+- ✅ Firebase project (see FIREBASE_README.md)
+- ✅ Paystack account with API keys (see PAYSTACK_README.md)
+- ✅ Node.js installed on your computer
+- ✅ Firebase CLI installed (`npm install -g firebase-tools`)
 
 ## Step 1: Access Webhook Settings
 
@@ -283,14 +283,175 @@ Paystack sends webhooks from specific IP addresses. You can whitelist these IPs 
 
 ## Step 7: Listen to Firestore Changes in Your Flutter App
 
-Since webhooks update your Firestore database, your Flutter app can listen to these changes in real-time.
+Since webhooks update your Firestore database, your Flutter app automatically sees changes in real-time!
 
-**Note:** For the webhook to properly identify which order to update, you can either:
-- Include order metadata in the Paystack charge (if supported by the package)
-- Use the payment reference to match payments to orders
-- Store a mapping of payment references to order IDs
+### Real-time Order Updates
 
-In the Cloud Function, you can query orders by payment reference or use metadata if available.
+Your Flutter app can listen for order status changes:
+
+```dart
+// In your OrderBloc or order screen
+Stream<Order> listenToOrderStatus(String orderId) {
+  return FirebaseFirestore.instance
+      .collection('orders')
+      .doc(orderId)
+      .snapshots()
+      .map((doc) => Order.fromFirestore(doc));
+}
+
+// Use in your order confirmation screen
+class OrderConfirmationScreen extends StatelessWidget {
+  final String orderId;
+
+  const OrderConfirmationScreen({Key? key, required this.orderId}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<Order>(
+      stream: listenToOrderStatus(orderId),
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          final order = snapshot.data!;
+
+          switch (order.status) {
+            case 'paid':
+              return PaymentSuccessWidget(order: order);
+            case 'payment_failed':
+              return PaymentFailedWidget(order: order);
+            default:
+              return OrderProcessingWidget(order: order);
+          }
+        }
+
+        return const CircularProgressIndicator();
+      },
+    );
+  }
+}
+```
+
+### Push Notifications (Optional)
+
+Add Firebase Cloud Messaging for instant notifications:
+
+```dart
+// In main.dart
+FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+  if (message.data['type'] == 'payment_success') {
+    // Show in-app notification
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Payment confirmed for order ${message.data['orderId']}')),
+    );
+  }
+});
+```
+
+---
+
+## 🔒 Security Checklist
+
+### ✅ Webhook Security
+- [ ] Paystack secret key stored securely in Firebase config
+- [ ] Webhook signature verification implemented
+- [ ] HTTPS-only webhook URL
+- [ ] Proper error handling and logging
+
+### ✅ Firestore Security
+- [ ] Security rules prevent unauthorized access
+- [ ] Users can only access their own orders
+- [ ] Admin-only access for product management
+- [ ] Data validation in security rules
+
+### ✅ App Security
+- [ ] Paystack public key only in client code
+- [ ] Secret keys never in app code
+- [ ] Environment variables for different environments
+- [ ] Input validation on all forms
+
+---
+
+## 🚨 Common Issues & Solutions
+
+### Webhook Not Receiving Events
+**Problem**: Paystack dashboard shows webhook failures
+**Solutions**:
+- Check Firebase function logs: `firebase functions:log`
+- Verify webhook URL is correct
+- Ensure function is deployed: `firebase functions:list`
+- Check Paystack secret key is set correctly
+
+### Invalid Signature Errors
+**Problem**: Function logs show "Invalid signature"
+**Solutions**:
+- Verify secret key: `firebase functions:config:get`
+- Check if using test/live keys correctly
+- Ensure signature verification code is correct
+
+### Orders Not Updating
+**Problem**: Payment succeeds but order status doesn't change
+**Solutions**:
+- Check Firestore security rules
+- Verify payment reference matching logic
+- Look for errors in function logs
+- Test with Firebase emulator locally
+
+### Function Timeout
+**Problem**: Function takes too long and times out
+**Solutions**:
+- Respond with 200 OK immediately
+- Move heavy processing to background
+- Use Firebase Cloud Tasks for long operations
+- Optimize database queries
+
+---
+
+## 📊 Monitoring & Maintenance
+
+### Check Function Performance
+```bash
+# View function metrics
+firebase functions:list
+
+# Check recent logs
+firebase functions:log --only paystackWebhook --limit 10
+```
+
+### Monitor Paystack Dashboard
+- View webhook delivery status
+- Check for failed webhook attempts
+- Monitor payment success rates
+- Review error logs
+
+### Regular Maintenance
+- Update Firebase Functions regularly
+- Monitor costs in Firebase Console
+- Review and update security rules
+- Test webhooks after deployments
+
+---
+
+## 🎯 Complete Setup Flow
+
+1. ✅ Set up Firebase project
+2. ✅ Configure Firestore security rules
+3. ✅ Create Paystack account and get keys
+4. ✅ Initialize Firebase Cloud Functions
+5. ✅ Create and deploy webhook function
+6. ✅ Configure webhook in Paystack dashboard
+7. ✅ Test with sample payments
+8. ✅ Add real-time listeners in Flutter app
+9. ✅ Set up monitoring and alerts
+
+Your complete payment system is now ready! 🎉
+
+---
+
+## 📚 Additional Resources
+
+- [Firebase Cloud Functions Documentation](https://firebase.google.com/docs/functions)
+- [Paystack Webhook Guide](https://developers.paystack.co/docs/webhooks)
+- [Firestore Security Rules](https://firebase.google.com/docs/firestore/security/get-started)
+- [Firebase Cloud Messaging](https://firebase.google.com/docs/cloud-messaging)
 
 ### Listen to Order Status Changes
 
