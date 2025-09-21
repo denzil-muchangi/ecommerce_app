@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_paystack_plus/flutter_paystack_plus.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_paystack/flutter_paystack.dart';
+import '../bloc/auth/auth_bloc.dart';
+import '../bloc/auth/auth_state.dart';
 import '../bloc/cart/cart_bloc.dart';
 import '../bloc/cart/cart_event.dart';
 import '../bloc/cart/cart_state.dart';
@@ -25,7 +27,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Address? _selectedAddress;
   String _paymentMethod = 'Credit Card';
   bool _isPlacingOrder = false;
-  final plugin = PaystackPlugin();
 
   @override
   Widget build(BuildContext context) {
@@ -302,14 +303,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 },
               ),
               RadioListTile<String>(
-                title: const Text('Paystack'),
-                value: 'Paystack',
-                groupValue: _paymentMethod,
-                onChanged: (value) {
-                  setState(() => _paymentMethod = value!);
-                },
-              ),
-              RadioListTile<String>(
                 title: const Text('PayPal'),
                 value: 'PayPal',
                 groupValue: _paymentMethod,
@@ -320,6 +313,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               RadioListTile<String>(
                 title: const Text('Cash on Delivery'),
                 value: 'Cash on Delivery',
+                groupValue: _paymentMethod,
+                onChanged: (value) {
+                  setState(() => _paymentMethod = value!);
+                },
+              ),
+              RadioListTile<String>(
+                title: const Text('Paystack'),
+                value: 'Paystack',
                 groupValue: _paymentMethod,
                 onChanged: (value) {
                   setState(() => _paymentMethod = value!);
@@ -363,14 +364,53 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   ) async {
     if (_selectedAddress == null) return;
 
+    final authState = context.read<AuthBloc>().state;
+    if (authState is! Authenticated) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('User not authenticated')));
+      return;
+    }
+
+    final userId = authState.user.id;
+    final email = authState.user.email;
+
     setState(() => _isPlacingOrder = true);
 
-    // Get current user ID (assuming it's stored in auth state)
-    // For now, using a mock user ID
-    const userId = 'user1';
-
     if (_paymentMethod == 'Paystack') {
-      await _handlePaystackPayment(context, items, calculations, userId);
+      final reference = 'ref_${DateTime.now().millisecondsSinceEpoch}';
+      try {
+        final charge = await FlutterPaystackPlus.openPaystackPopup(
+          context: context,
+          customerEmail: email,
+          amount: ((calculations['total']! * 100).toInt()).toString(),
+          reference: reference,
+          onSuccess: () {
+            context.read<OrderBloc>().add(
+              PlaceOrder(
+                userId: userId,
+                items: items,
+                shippingAddress: _selectedAddress!,
+                paymentMethod: _paymentMethod,
+                subtotal: calculations['subtotal']!,
+                tax: calculations['tax']!,
+                shipping: calculations['shipping']!,
+                total: calculations['total']!,
+                paymentReference: reference,
+                paymentStatus: 'paid',
+              ),
+            );
+          },
+          onClosed: () {
+            setState(() => _isPlacingOrder = false);
+          },
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Payment error: $e')));
+        setState(() => _isPlacingOrder = false);
+      }
     } else {
       context.read<OrderBloc>().add(
         PlaceOrder(
@@ -387,62 +427,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  Future<void> _handlePaystackPayment(
-    BuildContext context,
-    List<CartItem> items,
-    Map<String, double> calculations,
-    String userId,
-  ) async {
-    try {
-      final charge = Charge()
-        ..amount = (calculations['total']! * 100)
-            .toInt() // Paystack expects amount in kobo
-        ..email =
-            'user@example.com' // Should get from user data
-        ..reference = 'ref_${DateTime.now().millisecondsSinceEpoch}';
-
-      final response = await plugin.checkout(
-        context,
-        method: CheckoutMethod.card,
-        charge: charge,
-      );
-
-      if (response.status) {
-        // Payment successful, place order
-        context.read<OrderBloc>().add(
-          PlaceOrder(
-            userId: userId,
-            items: items,
-            shippingAddress: _selectedAddress!,
-            paymentMethod: _paymentMethod,
-            subtotal: calculations['subtotal']!,
-            tax: calculations['tax']!,
-            shipping: calculations['shipping']!,
-            total: calculations['total']!,
-            paymentReference: response.reference,
-            paymentStatus: 'success',
-          ),
-        );
-      } else {
-        // Payment failed
-        setState(() => _isPlacingOrder = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Payment failed: ${response.message}')),
-        );
-      }
-    } catch (e) {
-      setState(() => _isPlacingOrder = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Payment error: $e')));
-    }
-  }
-
   @override
   void initState() {
     super.initState();
-    // Initialize Paystack
-    plugin.initialize(publicKey: 'pk_test_your_paystack_public_key_here');
     // Load user addresses
     context.read<UserBloc>().add(const LoadUserAddresses('user1'));
   }

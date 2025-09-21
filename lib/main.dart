@@ -25,6 +25,7 @@ import 'data/datasources/favorites_local_data_source.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:flutter_paystack_plus/flutter_paystack_plus.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
