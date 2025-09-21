@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -98,13 +99,14 @@ void main() {
   testWidgets('HomeScreen shows loading indicator when loading', (
     WidgetTester tester,
   ) async {
-    // Set up mock to return a delayed future to keep it in loading state
+    // Set up mock to return an uncompleted future to keep it in loading state
+    final completer = Completer<List<Product>>();
     when(
       mockProductRepository.getFeaturedProducts(),
-    ).thenAnswer((_) => Future.delayed(const Duration(seconds: 1), () => []));
+    ).thenAnswer((_) => completer.future);
     when(
       mockProductRepository.getCategories(),
-    ).thenAnswer((_) => Future.delayed(const Duration(seconds: 1), () => []));
+    ).thenAnswer((_) => Future.value([]));
 
     await tester.pumpWidget(createWidgetUnderTest());
 
