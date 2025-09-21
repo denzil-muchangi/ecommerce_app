@@ -24,6 +24,14 @@ void main() {
   setUp(() {
     mockProductRepository = MockProductRepository();
     mockFavoritesRepository = MockFavoritesRepositoryImpl();
+    // Set up default mocks
+    when(
+      mockProductRepository.getFeaturedProducts(),
+    ).thenAnswer((_) async => []);
+    when(mockProductRepository.getCategories()).thenAnswer((_) async => []);
+    when(
+      mockFavoritesRepository.isFavorite(any),
+    ).thenAnswer((_) async => false);
   });
 
   const testProduct = Product(
@@ -104,11 +112,25 @@ void main() {
     when(
       mockProductRepository.getFeaturedProducts(),
     ).thenAnswer((_) => completer.future);
-    when(
-      mockProductRepository.getCategories(),
-    ).thenAnswer((_) => Future.value([]));
 
-    await tester.pumpWidget(createWidgetUnderTest());
+    final bloc = ProductBloc(mockProductRepository);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MultiBlocProvider(
+          providers: [
+            BlocProvider<ProductBloc>.value(value: bloc),
+            BlocProvider<FavoritesBloc>(
+              create: (_) => FavoritesBloc(mockFavoritesRepository),
+            ),
+          ],
+          child: const HomeScreen(),
+        ),
+      ),
+    );
+
+    // Manually trigger loading
+    bloc.add(LoadFeaturedProducts());
+    await tester.pump();
 
     // Should show loading
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -181,7 +203,7 @@ void main() {
     await tester.pumpWidget(createWidgetUnderTest());
 
     await tester.tap(find.byIcon(Icons.search));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.text('Search Products'), findsOneWidget);
     expect(find.text('Enter product name...'), findsOneWidget);
@@ -195,10 +217,10 @@ void main() {
     await tester.pumpWidget(createWidgetUnderTest());
 
     await tester.tap(find.byIcon(Icons.search));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     await tester.tap(find.text('Cancel'));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.text('Search Products'), findsNothing);
   });
