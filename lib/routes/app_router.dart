@@ -43,7 +43,17 @@ GoRouter createRouter(AuthBloc authBloc) {
       final location = state.uri.path;
 
       // Allow splash screen to load
-      if (location == '/') return null;
+      if (location == '/') {
+        if (!isLoading) {
+          // If not loading, redirect based on auth status
+          if (isAuthenticated) {
+            return '/home';
+          } else {
+            return '/login';
+          }
+        }
+        return null;
+      }
 
       // If still loading auth status, don't redirect
       if (isLoading) return null;
