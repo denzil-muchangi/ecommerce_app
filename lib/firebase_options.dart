@@ -47,13 +47,13 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'your-web-api-key',
-    appId: 'your-web-app-id',
-    messagingSenderId: 'your-messaging-sender-id',
-    projectId: 'your-project-id',
-    authDomain: 'your-project-id.firebaseapp.com',
-    storageBucket: 'your-project-id.appspot.com',
-    measurementId: 'your-measurement-id',
+    apiKey: 'AIzaSyBpWNrfgMTQleytVOM4G4Y-G1B5gnrbB8k',
+    appId: '1:799751235402:web:2d843ca7c4a1247b1883b3',
+    messagingSenderId: '799751235402',
+    projectId: 'e-commerce-flutter-app-bdec2',
+    authDomain: 'e-commerce-flutter-app-bdec2.firebaseapp.com',
+    storageBucket: 'e-commerce-flutter-app-bdec2.firebasestorage.app',
+    measurementId: 'G-4RKW9Q9P2L',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
